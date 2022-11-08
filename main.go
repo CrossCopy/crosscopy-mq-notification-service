@@ -19,7 +19,7 @@ type RecordValue struct {
 	username string
 }
 
-func main1() {
+func main() {
 	err := godotenv.Load()
 	if err != nil {
 		panic("Error reading .env")
