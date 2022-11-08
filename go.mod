@@ -3,7 +3,11 @@ module github.com/CrossCopy/crosscopy-mq-notification-service
 go 1.19
 
 require (
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/confluentinc/confluent-kafka-go v1.9.2 // indirect
 	github.com/confluentinc/examples v7.3.0+incompatible // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/go-redis/redis/v8 v8.11.5 // indirect
+	github.com/joho/godotenv v1.4.0 // indirect
 	gopkg.in/confluentinc/confluent-kafka-go.v1 v1.8.2 // indirect
 )

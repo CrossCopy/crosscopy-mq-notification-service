@@ -1,6 +1,8 @@
 package notification_service
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -29,4 +31,22 @@ func TestConstructSignupEmailVerificationRedisKeyFailWithEmptyParameters(t *test
 	if !(err != nil && strings.Contains(err.Error(), "empty code")) {
 		t.Errorf("Expect 'empty code' Error")
 	}
+}
+
+// brute force testing Digit code generator with 100 lengths, each 100 times
+func TestGetRandomDigitCode(t *testing.T) {
+	for l := 1; l < 100; l++ {
+		for i := 1; i < 100; i++ {
+			code := GetRandomDigitCode(6)
+			if len(code) != 6 {
+				t.Errorf("Wrong Length")
+			}
+			for _, char := range code {
+				if match, err := regexp.MatchString("\\d", fmt.Sprintf("%c", char)); !match || err != nil {
+					t.Errorf("Wrong Character")
+				}
+			}
+		}
+	}
+
 }
