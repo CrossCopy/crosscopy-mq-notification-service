@@ -3,26 +3,29 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	main2 "github.com/CrossCopy/crosscopy-mq-notification-service/kafka"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	kkafka "github.com/CrossCopy/crosscopy-mq-notification-service/kafka"
+
 	"github.com/CrossCopy/crosscopy-mq-notification-service/notification_service"
-	redis2 "github.com/CrossCopy/crosscopy-mq-notification-service/redis"
+	"github.com/CrossCopy/crosscopy-mq-notification-service/redis"
 	"github.com/joho/godotenv"
 	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 func main() {
+	fmt.Println("Loading .env")
 	err := godotenv.Load()
 	if err != nil {
-		panic("Error reading .env")
+		fmt.Println(err)
+		fmt.Println("Warning: .env doesn't exist")
 	}
 	env := notification_service.LoadEnv()
 
-	instance := redis2.GetRedisInstance()
+	instance := redis.GetRedisInstance()
 	instance.Connect()
 
 	// Create Consumer instance
@@ -71,7 +74,7 @@ func main() {
 			case "signup":
 				fmt.Println("test1")
 				recordValue := msg.Value
-				record := main2.SignupTopicRecordValue{}
+				record := kkafka.SignupTopicRecordValue{}
 				err = json.Unmarshal(recordValue, &record)
 				if err != nil {
 					fmt.Printf("Failed to decode JSON at offset %d: %v", msg.TopicPartition.Offset, err)
