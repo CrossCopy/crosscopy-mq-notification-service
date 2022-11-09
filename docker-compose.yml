@@ -1,0 +1,59 @@
+# Use root/example as user/password credentials
+version: '3.9'
+
+services:
+  redis:
+    image: redislabs/rejson:latest
+    container_name: crosscopy-redis
+    restart: unless-stopped
+    ports:
+      - 6379:6379
+    # volumes:
+    #   - ../server-nodejs/src/database/initdb.d/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - crosscopy
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    container_name: crosscopy-zookeeper
+    ports:
+      - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - crosscopy
+  kafka:
+    image: 'bitnami/kafka:latest'
+    container_name: crosscopy-kafka
+    restart: unless-stopped
+    ports:
+      - '9092:9092'
+      - '9093:9093'
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
+    depends_on:
+      - zookeeper
+    networks:
+      - crosscopy
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: crosscopy-kafdrop
+    restart: unless-stopped
+    ports:
+      - 9005:9000
+    environment:
+      - KAFKA_BROKERCONNECT=kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - crosscopy
+networks:
+  crosscopy:
+    driver: bridge
+volumes:
+  crosscopy-mysql-db:
