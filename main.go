@@ -1,23 +1,19 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/CrossCopy/crosscopy-mq-notification-service/notification_service"
-	"github.com/go-redis/redis/v8"
-	"github.com/joho/godotenv"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
+	main2 "github.com/CrossCopy/crosscopy-mq-notification-service/kafka"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-)
 
-type RecordValue struct {
-	email    string
-	username string
-}
+	"github.com/CrossCopy/crosscopy-mq-notification-service/notification_service"
+	redis2 "github.com/CrossCopy/crosscopy-mq-notification-service/redis"
+	"github.com/joho/godotenv"
+	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
+)
 
 func main() {
 	err := godotenv.Load()
@@ -25,12 +21,9 @@ func main() {
 		panic("Error reading .env")
 	}
 	env := notification_service.LoadEnv()
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "10.6.6.200:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-	ctx := context.Background()
+
+	instance := redis2.GetRedisInstance()
+	instance.Connect()
 
 	// Create Consumer instance
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
@@ -70,23 +63,24 @@ func main() {
 				// Errors are informational and automatically handled by the consumer
 				continue
 			}
-			recordKey := string(msg.Key)
-			recordValue := msg.Value
-			record := RecordValue{}
-			err = json.Unmarshal(recordValue, &record)
-			if err != nil {
-				fmt.Printf("Failed to decode JSON at offset %d: %v", msg.TopicPartition.Offset, err)
-				continue
+			//recordKey := string(msg.Key)
+			switch *msg.TopicPartition.Topic {
+			case "test1":
+				fmt.Println("test1")
+
+			case "signup":
+				fmt.Println("test1")
+				recordValue := msg.Value
+				record := main2.SignupTopicRecordValue{}
+				err = json.Unmarshal(recordValue, &record)
+				if err != nil {
+					fmt.Printf("Failed to decode JSON at offset %d: %v", msg.TopicPartition.Offset, err)
+					continue
+				}
+			default:
+				fmt.Printf("error: unhandled topic %s\n", *msg.TopicPartition.Topic)
 			}
-			key, err := notification_service.ConstructSignupEmailVerificationRedisKey(record.username, record.email, "1024")
 
-			rdb.HSet(ctx, key, "status", "not-verified")
-			rdb.HSet(ctx, key, "chance-left", "2")
-			rdb.Expire(ctx, key, 10*time.Minute)
-
-			val, err := rdb.Get(ctx, "key").Result()
-			fmt.Println(val)
-			fmt.Printf("Consumed record with key %s and value %s \n", recordKey, recordValue)
 		}
 	}
 
