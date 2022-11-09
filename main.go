@@ -8,43 +8,33 @@ import (
 	"syscall"
 	"time"
 
-	kkafka "github.com/CrossCopy/crosscopy-mq-notification-service/kafka"
-
+	mykafka "github.com/CrossCopy/crosscopy-mq-notification-service/kafka"
 	"github.com/CrossCopy/crosscopy-mq-notification-service/notification_service"
 	"github.com/CrossCopy/crosscopy-mq-notification-service/redis"
-	"github.com/joho/godotenv"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 func main() {
-	fmt.Println("Loading .env")
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println(err)
-		fmt.Println("Warning: .env doesn't exist")
-	}
-	env := notification_service.LoadEnv()
-
-	instance := redis.GetRedisInstance()
-	instance.Connect()
-
+	env := notification_service.EnvVars{}
+	env.LoadDotEnv().LoadEnvVars()
+	notification_service.GetEmailNotifierInstance().Init(env.EmailAddress, env.EmailPassword, env.MailServerAddress, env.MailServerHost)
+	redis.GetRedisInstance().Connect()
 	// Create Consumer instance
-	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers": env.KafkaBootstrapServers,
-		"sasl.mechanisms":   env.KafkaSaslMechanisms,
-		"security.protocol": env.KafkaSecurityProtocol,
-		"sasl.username":     env.KafkaSaslUsername,
-		"sasl.password":     env.KafkaSaslPassword,
-		"group.id":          env.KakfaGroupId,
-		"auto.offset.reset": "earliest",
-	})
-	if err != nil {
-		fmt.Printf("Failed to create consumer: %s", err)
-		os.Exit(1)
+	var kafkaConfig = mykafka.KafkaConfig{
+		Mode:             mykafka.KafkaMode(env.KafkaMode),
+		BootstrapServers: env.KafkaBootstrapServers,
+		SecurityProtocol: env.KafkaSecurityProtocol,
+		SaslMechanisms:   env.KafkaSaslMechanisms,
+		SaslUsername:     env.KafkaSaslUsername,
+		SaslPassword:     env.KafkaSaslPassword,
+		GroupId:          env.KakfaGroupId,
 	}
-	topicsToSubscribe := []string{"test1"}
+	adminClient := mykafka.GetAdminClient(kafkaConfig)
+	replicationFactor := mykafka.GetReplicationFactor(mykafka.KafkaMode(env.KafkaMode))
+	mykafka.CreateTopic(adminClient, mykafka.TopicSignup, replicationFactor)
+	consumer := mykafka.GetConsumer(kafkaConfig)
+	topicsToSubscribe := []string{mykafka.TopicSignup}
 	// Subscribe to topic
-	err = consumer.SubscribeTopics(topicsToSubscribe, nil)
+	err := consumer.SubscribeTopics(topicsToSubscribe, nil)
 	if err != nil {
 		panic("Error Subscribing to Topic")
 	}
@@ -55,7 +45,7 @@ func main() {
 
 	// Process messages
 	run := true
-	for run == true {
+	for run {
 		select {
 		case sig := <-sigchan:
 			fmt.Printf("Caught signal %v: terminating\n", sig)
@@ -68,22 +58,20 @@ func main() {
 			}
 			//recordKey := string(msg.Key)
 			switch *msg.TopicPartition.Topic {
-			case "test1":
-				fmt.Println("test1")
 
-			case "signup":
-				fmt.Println("test1")
+			case mykafka.TopicSignup:
+				fmt.Printf("Topic Received: %s\n", mykafka.TopicSignup)
 				recordValue := msg.Value
-				record := kkafka.SignupTopicRecordValue{}
+				record := mykafka.SignupTopicRecordValue{}
 				err = json.Unmarshal(recordValue, &record)
 				if err != nil {
 					fmt.Printf("Failed to decode JSON at offset %d: %v", msg.TopicPartition.Offset, err)
 					continue
 				}
+				notification_service.SignupHandler(record)
 			default:
 				fmt.Printf("error: unhandled topic %s\n", *msg.TopicPartition.Topic)
 			}
-
 		}
 	}
 

@@ -25,10 +25,8 @@ func GetRedisInstance() *Singleton {
 			fmt.Println("Creating RedisClient instance now.")
 			singleInstance = &Singleton{}
 		} else {
-			fmt.Println("Single instance already created.")
 		}
 	} else {
-		fmt.Println("Single instance already created.")
 	}
 
 	return singleInstance

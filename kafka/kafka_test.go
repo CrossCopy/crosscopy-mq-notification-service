@@ -15,45 +15,42 @@ var TestKafkaConfig = KafkaConfig{
 	GroupId:          "crosscopy-notification",
 }
 
-func TestDummy(t *testing.T) {
-	fmt.Println(TestKafkaConfig)
-	fmt.Println(TestKafkaConfig.SaslUsername)
-	fmt.Println(TestKafkaConfig.SaslUsername == "")
-}
 func TestCreateTopic(t *testing.T) {
-	producer := GetProducer(TestKafkaConfig)
-	topic := "some_topic1"
-	CreateTopic(producer, topic, 1)
-	_, topics := GetMetadata(producer, &topic)
+	adminClient := GetAdminClient(TestKafkaConfig)
+	topic := "some_topic5"
+	CreateTopic(adminClient, topic, 1)
+	_, topics := GetMetadata(adminClient, &topic)
 	for _, topic_ := range topics {
 		if topic_ == topic {
 			return
 		}
 	}
 	t.Errorf("Topic %s not deleted\n", topic)
-	DeleteTopic(producer, []string{topic})
-	producer.Close()
+	DeleteTopic(adminClient, []string{topic})
+	adminClient.Close()
 }
 
 func TestDeleteTopic(t *testing.T) {
-	producer := GetProducer(TestKafkaConfig)
 	topic := "some_topic"
-	CreateTopic(producer, topic, 1)
-	DeleteTopic(producer, []string{topic})
-	_, topics := GetMetadata(producer, &topic)
+	adminClient := GetAdminClient(TestKafkaConfig)
+	replicationFactor := GetReplicationFactor(TestKafkaConfig.Mode)
+	CreateTopic(adminClient, topic, replicationFactor)
+	DeleteTopic(adminClient, []string{topic})
+	_, topics := GetMetadata(adminClient, &topic)
 	for _, topic_ := range topics {
 		if topic_ == topic {
 			t.Errorf("Topic %s not deleted\n", topic)
 		}
 	}
-	producer.Close()
+	adminClient.Close()
 }
 
 func TestProduceSignupTopicMessage(t *testing.T) {
 	producer := GetProducer(TestKafkaConfig)
+	adminClient := GetAdminClientFromProducer(producer)
 	ListenProducerEvents(producer)
 	topic := "signup"
-	CreateTopic(producer, topic, 1)
+	CreateTopic(adminClient, topic, 1)
 	for i := 10; i < 20; i++ {
 		username := fmt.Sprintf("user%d", i)
 		email := fmt.Sprintf("user%d@crosscopy.io", i)

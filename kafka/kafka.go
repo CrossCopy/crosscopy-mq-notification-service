@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	TopicSignup string = "singup"
+	TopicSignup string = "signup"
 )
 
 type SignupTopicRecordValue struct {
@@ -36,6 +36,14 @@ type KafkaConfig struct {
 	GroupId          string
 }
 
+func GetReplicationFactor(mode KafkaMode) int {
+	replicationFactor := 1
+	if mode == CloudMode {
+		replicationFactor = 3
+	}
+	return replicationFactor
+}
+
 func GetAdminClientFromProducer(producer *kafka.Producer) *kafka.AdminClient {
 	adminClient, err := kafka.NewAdminClientFromProducer(producer)
 	if err != nil {
@@ -45,10 +53,19 @@ func GetAdminClientFromProducer(producer *kafka.Producer) *kafka.AdminClient {
 	return adminClient
 }
 
+func GetAdminClient(config KafkaConfig) *kafka.AdminClient {
+	configMap := GetKafkaConfigMap(config)
+	adminClient, err := kafka.NewAdminClient(configMap)
+	if err != nil {
+		fmt.Printf("Failed to create new admin client from producer: %s", err)
+		os.Exit(1)
+	}
+	return adminClient
+}
+
 // CreateTopic creates a topic using the Admin Client API
 // CreateTopic(producer, topic)
-func CreateTopic(producer *kafka.Producer, topic string, replicationFactor int) {
-	a := GetAdminClientFromProducer(producer)
+func CreateTopic(adminClient *kafka.AdminClient, topic string, replicationFactor int) {
 	// Contexts are used to abort or limit the amount of time
 	// the Admin call blocks waiting for a result.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -61,7 +78,7 @@ func CreateTopic(producer *kafka.Producer, topic string, replicationFactor int) 
 		os.Exit(1)
 	}
 
-	results, err := a.CreateTopics(
+	results, err := adminClient.CreateTopics(
 		ctx,
 		// Multiple topics can be created simultaneously
 		// by providing more TopicSpecification structs here.
@@ -82,11 +99,9 @@ func CreateTopic(producer *kafka.Producer, topic string, replicationFactor int) 
 		}
 		fmt.Printf("%v\n", result)
 	}
-	a.Close()
 }
 
-func DeleteTopic(producer *kafka.Producer, topics []string) {
-	a := GetAdminClientFromProducer(producer)
+func DeleteTopic(adminClient *kafka.AdminClient, topics []string) {
 	// Contexts are used to abort or limit the amount of time
 	// the Admin call blocks waiting for a result.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -99,7 +114,7 @@ func DeleteTopic(producer *kafka.Producer, topics []string) {
 		os.Exit(1)
 	}
 
-	results, err := a.DeleteTopics(
+	results, err := adminClient.DeleteTopics(
 		ctx,
 		// Multiple topics can be created simultaneously
 		// by providing more TopicSpecification structs here.
@@ -117,30 +132,29 @@ func DeleteTopic(producer *kafka.Producer, topics []string) {
 		}
 		fmt.Printf("%v\n", result)
 	}
-	a.Close()
 }
 
-func GetKafkaConfigMap(config KafkaConfig) kafka.ConfigMap {
-	configMap := kafka.ConfigMap{
-		"bootstrap.servers": config.BootstrapServers,
-		"group.id":          config.GroupId,
-	}
+func GetKafkaConfigMap(config KafkaConfig) *kafka.ConfigMap {
+	cm := &kafka.ConfigMap{"bootstrap.servers": config.BootstrapServers}
 	if config.Mode == CloudMode {
-		configMap.SetKey("sasl.mechanisms", config.SaslMechanisms)
-		configMap.SetKey("security.protocol", config.SecurityProtocol)
-		configMap.SetKey("sasl.username", config.SecurityProtocol)
-		configMap.SetKey("sasl.password", config.SaslPassword)
+		cm.SetKey("sasl.mechanisms", config.SaslMechanisms)
+		cm.SetKey("security.protocol", config.SecurityProtocol)
+		cm.SetKey("sasl.username", config.SaslUsername)
+		cm.SetKey("sasl.password", config.SaslPassword)
 	} else if config.Mode == LocalMode {
 		// pass
 	} else {
 		fmt.Printf("Wrong kafka config mode: %s\n", config.Mode)
 	}
-	return configMap
+	return cm
 }
 
 func GetProducer(config KafkaConfig) *kafka.Producer {
 	configMap := GetKafkaConfigMap(config)
-	producer, err := kafka.NewProducer(&configMap)
+	fmt.Println("configMap")
+	fmt.Println(configMap)
+
+	producer, err := kafka.NewProducer(configMap)
 	if err != nil {
 		fmt.Printf("Failed to create producer: %s", err)
 		os.Exit(1)
@@ -150,8 +164,9 @@ func GetProducer(config KafkaConfig) *kafka.Producer {
 
 func GetConsumer(config KafkaConfig) *kafka.Consumer {
 	configMap := GetKafkaConfigMap(config)
+	configMap.SetKey("group.id", config.GroupId)
 	configMap.SetKey("auto.offset.reset", "earliest")
-	consumer, err := kafka.NewConsumer(&configMap)
+	consumer, err := kafka.NewConsumer(configMap)
 	if err != nil {
 		fmt.Printf("Failed to create consumer: %s", err)
 		os.Exit(1)
@@ -159,9 +174,8 @@ func GetConsumer(config KafkaConfig) *kafka.Consumer {
 	return consumer
 }
 
-func GetMetadata(producer *kafka.Producer, topic *string) (*kafka.Metadata, []string) {
-	a := GetAdminClientFromProducer(producer)
-	metadata, err := a.GetMetadata(topic, true, 100000)
+func GetMetadata(adminClient *kafka.AdminClient, topic *string) (*kafka.Metadata, []string) {
+	metadata, err := adminClient.GetMetadata(topic, true, 100000)
 	if err != nil {
 		fmt.Printf("Failed to get metadata: %s", err)
 		os.Exit(1)

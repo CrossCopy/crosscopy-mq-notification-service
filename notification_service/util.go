@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"os"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 func ConstructSignupEmailVerificationRedisKey(username string, email string, code string) (string, error) {
@@ -27,6 +29,7 @@ type EnvVars struct {
 	EmailAddress          string
 	EmailPassword         string
 	MailServerAddress     string
+	MailServerHost        string
 	KakfaGroupId          string
 	KafkaMode             string
 	KafkaBootstrapServers string
@@ -36,20 +39,30 @@ type EnvVars struct {
 	KafkaSaslPassword     string
 }
 
-func LoadEnv() EnvVars {
-	env := EnvVars{
-		EmailAddress:          os.Getenv("EMAIL_ADDRESS"),
-		EmailPassword:         os.Getenv("EMAIL_PASSWORD"),
-		MailServerAddress:     os.Getenv("MAIL_SERVER"),
-		KafkaMode:             os.Getenv("KAFKA_MODE"),
-		KakfaGroupId:          os.Getenv("KAFKA_GROUP_ID"),
-		KafkaBootstrapServers: os.Getenv("KAFKA_BOOTSTRAP_SERVERS"),
-		KafkaSecurityProtocol: os.Getenv("KAFKA_SECURITY_PROTOCOL"),
-		KafkaSaslMechanisms:   os.Getenv("KAFKA_SASL_MECHANISMS"),
-		KafkaSaslUsername:     os.Getenv("KAFKA_SASL_USERNAME"),
-		KafkaSaslPassword:     os.Getenv("KAFKA_SASL_PASSWORD"),
+func (ev *EnvVars) LoadDotEnv() *EnvVars {
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println("Warning: .env doesn't exist")
 	}
-	return env
+	return ev
+}
+
+func (ev *EnvVars) LoadEnvVars() *EnvVars {
+	host := strings.Split(os.Getenv("MAIL_SERVER"), ":")[0]
+
+	ev.EmailAddress = os.Getenv("EMAIL_ADDRESS")
+	ev.EmailPassword = os.Getenv("EMAIL_PASSWORD")
+	ev.MailServerAddress = os.Getenv("MAIL_SERVER")
+	ev.MailServerHost = host
+	ev.KafkaMode = os.Getenv("KAFKA_MODE")
+	ev.KakfaGroupId = os.Getenv("KAFKA_GROUP_ID")
+	ev.KafkaBootstrapServers = os.Getenv("KAFKA_BOOTSTRAP_SERVERS")
+	ev.KafkaSecurityProtocol = os.Getenv("KAFKA_SECURITY_PROTOCOL")
+	ev.KafkaSaslMechanisms = os.Getenv("KAFKA_SASL_MECHANISMS")
+	ev.KafkaSaslUsername = os.Getenv("KAFKA_SASL_USERNAME")
+	ev.KafkaSaslPassword = os.Getenv("KAFKA_SASL_PASSWORD")
+	return ev
 }
 
 func GetRandomDigitCode(length int) string {
