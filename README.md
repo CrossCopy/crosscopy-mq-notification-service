@@ -13,6 +13,9 @@ MAIL_SERVER=
 KAFKA_MODE=cloud
 KAFKA_GROUP_ID=crosscopy-notification
 
+REDIS_HOST=
+REDIS_PORT=
+REDIS_PASS=
 
 KAFKA_BOOTSTRAP_SERVERS=
 KAFKA_SECURITY_PROTOCOL=
@@ -27,3 +30,7 @@ KAFKA_SASL_PASSWORD=
 docker build . -t ghcr.io/crosscopy/crosscopy-mq-notification-service:latest
 docker run -it --rm --env-file ./.env ghcr.io/crosscopy/crosscopy-mq-notification-service:latest
 ```
+
+## Development Environment
+
+MacOS cannot be easily used due to dependency issue with Confluent's kafka library.

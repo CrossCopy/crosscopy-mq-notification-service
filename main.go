@@ -17,7 +17,7 @@ func main() {
 	env := notification_service.EnvVars{}
 	env.LoadDotEnv().LoadEnvVars()
 	notification_service.GetEmailNotifierInstance().Init(env.EmailAddress, env.EmailPassword, env.MailServerAddress, env.MailServerHost)
-	redis.GetRedisInstance().Connect()
+	redis.GetRedisInstance().Connect(env.REDIS_HOST, env.REDIS_PASS, env.REDIS_PORT)
 	// Create Consumer instance
 	var kafkaConfig = mykafka.KafkaConfig{
 		Mode:             mykafka.KafkaMode(env.KafkaMode),

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -30,6 +31,9 @@ type EnvVars struct {
 	EmailPassword         string
 	MailServerAddress     string
 	MailServerHost        string
+	REDIS_HOST            string
+	REDIS_PORT            int
+	REDIS_PASS            string
 	KakfaGroupId          string
 	KafkaMode             string
 	KafkaBootstrapServers string
@@ -55,6 +59,13 @@ func (ev *EnvVars) LoadEnvVars() *EnvVars {
 	ev.EmailPassword = os.Getenv("EMAIL_PASSWORD")
 	ev.MailServerAddress = os.Getenv("MAIL_SERVER")
 	ev.MailServerHost = host
+	ev.REDIS_HOST = os.Getenv("REDIS_HOST")
+	REDIS_PORT, err := strconv.Atoi(os.Getenv("REDIS_PORT"))
+	if err != nil {
+		panic("Invalid Port")
+	}
+	ev.REDIS_PORT = REDIS_PORT
+	ev.REDIS_PASS = os.Getenv("REDIS_PASS")
 	ev.KafkaMode = os.Getenv("KAFKA_MODE")
 	ev.KakfaGroupId = os.Getenv("KAFKA_GROUP_ID")
 	ev.KafkaBootstrapServers = os.Getenv("KAFKA_BOOTSTRAP_SERVERS")

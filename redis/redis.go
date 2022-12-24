@@ -32,11 +32,11 @@ func GetRedisInstance() *Singleton {
 	return singleInstance
 }
 
-func (r Singleton) Connect() *Singleton {
+func (r Singleton) Connect(address string, password string, port int) *Singleton {
 	singleInstance.Client = goredis.NewClient(&goredis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
+		Addr:     fmt.Sprintf("%s:%d", address, port),
+		Password: password,
+		DB:       0, // use default DB
 	})
 	singleInstance.Ctx = context.Background()
 	return singleInstance
