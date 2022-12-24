@@ -27,8 +27,11 @@ KAFKA_SASL_PASSWORD=
 ## Docker
 
 ```bash
-docker build . -t ghcr.io/crosscopy/crosscopy-mq-notification-service:latest
-docker run -it --rm --env-file ./.env ghcr.io/crosscopy/crosscopy-mq-notification-service:latest
+docker build . -t ghcr.io/crosscopy/crosscopy-mq-notification-service:main
+docker run -it --rm --env-file ./.env ghcr.io/crosscopy/crosscopy-mq-notification-service:main
+
+# to deploy
+docker run --restart=unless-stopped -d --env-file ./.env ghcr.io/crosscopy/crosscopy-mq-notification-service:main
 ```
 
 ## Development Environment
