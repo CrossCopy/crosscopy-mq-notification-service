@@ -10,14 +10,30 @@ import (
 
 	mykafka "github.com/CrossCopy/crosscopy-mq-notification-service/kafka"
 	"github.com/CrossCopy/crosscopy-mq-notification-service/notification_service"
-	"github.com/CrossCopy/crosscopy-mq-notification-service/redis"
+	myredis "github.com/CrossCopy/crosscopy-mq-notification-service/redis"
 )
 
 func main() {
 	env := notification_service.EnvVars{}
 	env.LoadDotEnv().LoadEnvVars()
 	notification_service.GetEmailNotifierInstance().Init(env.EmailAddress, env.EmailPassword, env.MailServerAddress, env.MailServerHost)
-	redis.GetRedisInstance().Connect(env.REDIS_HOST, env.REDIS_PASS, env.REDIS_PORT)
+	myredis.GetRedisInstance().Connect(env.REDIS_HOST, env.REDIS_PASS, env.REDIS_PORT)
+	redisInstance := myredis.GetRedisInstance()
+	rdb := redisInstance.Client
+	ctx := redisInstance.Ctx
+	if err := rdb.Del(ctx, "test-connection").Err(); err != nil {
+		panic(err)
+	}
+	if err := rdb.Set(ctx, "test-connection", "huakun", 10*time.Minute).Err(); err != nil {
+		panic(err)
+	}
+	textConnectionVal, err := rdb.Get(ctx, "test-connection").Result()
+	if err != nil {
+		panic(err)
+	}
+	if textConnectionVal != "huakun" {
+		panic("Redis Connection Not Successful")
+	}
 	// Create Consumer instance
 	var kafkaConfig = mykafka.KafkaConfig{
 		Mode:             mykafka.KafkaMode(env.KafkaMode),
@@ -35,8 +51,8 @@ func main() {
 	topicsToSubscribe := []string{mykafka.TopicSignup}
 	// Subscribe to topic
 	fmt.Println("Consumer Starts")
-	err := consumer.SubscribeTopics(topicsToSubscribe, nil)
-	if err != nil {
+	err1 := consumer.SubscribeTopics(topicsToSubscribe, nil)
+	if err1 != nil {
 		panic("Error Subscribing to Topic")
 	}
 
@@ -66,10 +82,12 @@ func main() {
 				record := mykafka.SignupTopicRecordValue{}
 				err = json.Unmarshal(recordValue, &record)
 				if err != nil {
-					fmt.Printf("Failed to decode JSON at offset %d: %v", msg.TopicPartition.Offset, err)
+					fmt.Printf("Failed to decode JSON at offset %d: %v\n", msg.TopicPartition.Offset, err)
 					continue
 				}
-				notification_service.SignupHandler(record)
+				if err := notification_service.SignupHandler(record); err != nil {
+					fmt.Println(err)
+				}
 			default:
 				fmt.Printf("error: unhandled topic %s\n", *msg.TopicPartition.Topic)
 			}
@@ -77,6 +95,8 @@ func main() {
 	}
 
 	fmt.Printf("Closing consumer\n")
-	consumer.Close()
+	if err := consumer.Close(); err != nil {
+		panic(err)
+	}
 
 }
