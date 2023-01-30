@@ -34,6 +34,7 @@ func main() {
 	consumer := mykafka.GetConsumer(kafkaConfig)
 	topicsToSubscribe := []string{mykafka.TopicSignup}
 	// Subscribe to topic
+	fmt.Println("Consumer Starts")
 	err := consumer.SubscribeTopics(topicsToSubscribe, nil)
 	if err != nil {
 		panic("Error Subscribing to Topic")
