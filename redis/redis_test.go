@@ -7,7 +7,7 @@ import (
 
 func TestRedisSingleton(t *testing.T) {
 	instance := GetRedisInstance()
-	instance.Connect()
+	instance.Connect("localhost", "", 6379)
 	rdb := instance.Client
 	ctx := instance.Ctx
 	key := "test-key"
