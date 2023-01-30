@@ -1,0 +1,34 @@
+steps:
+  # Checkout submodules recursively
+  - name: 'gcr.io/cloud-builders/git'
+    entrypoint: 'bash'
+
+  # Build Docker Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'build',
+        '-t',
+        '$_REGISTRY_REGION-docker.pkg.dev/$PROJECT_ID/$_REGISTRY_REPO_NAME/crosscopy-mq-notification-service',
+        '--cache-from',
+        '$_REGISTRY_REGION-docker.pkg.dev/$PROJECT_ID/$_REGISTRY_REPO_NAME/crosscopy-mq-notification-service',
+        '.',
+      ]
+
+  # Push Image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        '$_REGISTRY_REGION-docker.pkg.dev/$PROJECT_ID/$_REGISTRY_REPO_NAME/crosscopy-mq-notification-service',
+      ]
+
+substitutions:
+  _REGISTRY_REGION: us-east4
+  _REGISTRY_REPO_NAME: crosscopy-docker
+
+images:
+  [
+    '$_REGISTRY_REGION-docker.pkg.dev/$PROJECT_ID/$_REGISTRY_REPO_NAME/crosscopy-mq-notification-service',
+  ]
+
